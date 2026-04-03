@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Orbitron:wght@600;700&family=Noto+Sans+TC:wght@400;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -22,5 +23,75 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+@keyframes game-bike-ride {
+  0% {
+    transform: translateX(-120vw) rotate(-12deg) scale(0.75);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    transform: translateX(0) rotate(6deg) scale(1.05);
+  }
+  75% {
+    transform: translateX(0) rotate(-4deg) scale(1.08);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes game-intro-ring {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes game-road-pulse {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.3);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+}
+
+@keyframes intro-text-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.intro-text-card {
+  animation: intro-text-pop 0.65s ease-out 0.15s both;
+}
+
+.animate-game-bike {
+  animation: game-bike-ride 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-game-ring {
+  animation: game-intro-ring 2.4s ease-out forwards;
+}
+.animate-game-road {
+  animation: game-road-pulse 2.4s ease-out forwards;
 }

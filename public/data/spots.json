@@ -1,0 +1,63 @@
+[
+  {
+    "id": "hualien-coast",
+    "name": "花蓮海岸線",
+    "description": "太平洋的藍與中央山脈的綠在此交會。環島第三天，用雙腳感受海風與陽光，這條路見證無數騎士的堅持與笑容。停下來深呼吸，把這一刻的海天交界收進心裡，繼續向前——每一步都是 2026 我們的騎跡。",
+    "image": "/spots/hualien.svg",
+    "points": 30
+  },
+  {
+    "id": "rice-field",
+    "name": "稻浪小徑",
+    "description": "金黃或翠綠的稻田隨季節換裝，田埂是大地最溫柔的引路。騎在田邊，聽風穿過稻穗的沙沙聲，提醒自己：慢一點也沒關係，重要的是我們一起在路上。拍下這片風景，讓回憶有顏色、有溫度。",
+    "image": "/spots/rice.svg",
+    "points": 25
+  },
+  {
+    "id": "old-station",
+    "name": "老車站時光",
+    "description": "斑駁的月台與舊站房，靜靜訴說小鎮曾經的熱鬧。火車與腳踏車，都是「出發」的象徵。在這裡合影，把過去與現在疊在一起——我們的騎行故事，也會成為某天被想念的風景。",
+    "image": "/spots/station.svg",
+    "points": 25
+  },
+  {
+    "id": "temple-plaza",
+    "name": "廟埕人情味",
+    "description": "廟前廣場是社區的心跳：拜拜、聊天、喝杯茶。長途騎乘後，在這裡補給水分、擦汗、和夥伴互相打氣。土地公保佑平安，也保佑每一顆願意跨上坐墊、勇敢出發的心。",
+    "image": "/spots/temple.svg",
+    "points": 20
+  },
+  {
+    "id": "sunset-bridge",
+    "name": "夕照橋景",
+    "description": "黃昏時分，橋面被染成橘紅與紫。站在橋上回望今天的里程：也許疲憊，但一定值得。把夕陽與遠方的路一起框進鏡頭——明天太陽升起，我們的騎跡還會延伸。",
+    "image": "/spots/bridge.svg",
+    "points": 30
+  },
+  {
+    "id": "special-place-a",
+    "name": "特級任務 · 大地方甲心得",
+    "description": "今日第一個大地方：用你的心去走、用眼睛去記。請在下方寫下至少兩百字的真實心得——寫你看到的、感受到的、與夥伴之間的片段。字數以「不含標點符號」計算，好好說說這一站對你的意義。",
+    "image": "/spots/special-a.svg",
+    "points": 100,
+    "special": true,
+    "reflectionMinChars": 200
+  },
+  {
+    "id": "special-place-b",
+    "name": "特級任務 · 大地方乙心得",
+    "description": "今日第二個大地方：或許疲憊、或許驚喜，都值得被文字留下來。請撰寫至少兩百字心得（字數不含標點符號），讓這一天的騎跡不只有風景，還有你誠實的一句句話。",
+    "image": "/spots/special-b.svg",
+    "points": 100,
+    "special": true,
+    "reflectionMinChars": 200
+  },
+  {
+    "id": "ultimate-selfie",
+    "name": "終極任務 · 自拍或合照",
+    "description": "最後一關，留一張給自己與夥伴：可以是帥氣自拍、也可以是與好朋友勾肩搭背的合照。笑一個，今天的努力，值得被鏡頭記住。按下快門，為這一天的騎跡畫上最熱鬧的句點！",
+    "image": "/spots/ultimate.svg",
+    "points": 10,
+    "ultimate": true
+  }
+]

@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# local SQLite
+/data/game.db
+/data/game.db-*
+
 # debug
 npm-debug.log*
 yarn-debug.log*
