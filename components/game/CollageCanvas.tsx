@@ -147,7 +147,7 @@ function drawHeaderAndSlogan(ctx: CanvasRenderingContext2D) {
   y += 58;
   drawTextLine(
     ctx,
-    "我們的騎行，繼續向前",
+    "我們的騎行，繼續前進",
     cx,
     y,
     `700 40px ${NOTO}`,
@@ -312,14 +312,14 @@ export function CollageCanvas({ items, onRendered }: Props) {
         onClick={render}
         className="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 disabled:opacity-40"
       >
-        {busy ? "產生拼貼中…" : "產生 IG 限動圖（9:16）"}
+        {busy ? "產生拼貼中…" : "產生限動圖（9:16）"}
       </button>
       {previewUrl && (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
-            alt="IG 限動預覽"
+            alt="限動預覽"
             className="max-h-[55vh] w-auto max-w-full rounded-xl border border-white/15 shadow-2xl"
           />
           <button

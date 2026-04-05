@@ -20,7 +20,7 @@ const notoTc = Noto_Sans_TC({
 
 export const metadata: Metadata = {
   title: "2026 我們的騎跡 · Day3 大地遊戲",
-  description: "教踏車環島大地遊戲：景點打卡、拍照集點、IG 限動拼貼",
+  description: "腳踏車環島大地遊戲：來一趟充滿回憶的騎行吧！",
   appleWebApp: { capable: true, title: "我們的騎跡" },
 };
 
