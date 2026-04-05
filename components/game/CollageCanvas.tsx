@@ -5,8 +5,15 @@ import { useCallback, useRef, useState } from "react";
 const W = 1080;
 const H = 1920;
 
-/** 拼貼內容區起點（標語與標題畫在上方，需與 drawHeaderAndSlogan 底部留白一致） */
-const PHOTO_START_Y = 420;
+/** Instagram 限動 9:16：頂部狀態列／頭像、底部回覆列與左右 UI 會遮擋，須保留安全區避免被裁切 */
+const SAFE_TOP = 220;
+const SAFE_BOTTOM = 300;
+const SAFE_SIDE = 72;
+
+const BG_SRC = "/spots/bg.png";
+
+/** 標語＋分隔線以下留白，照片網格起點 = SAFE_TOP + 此值（略大於文案實際高度，避免與標題重疊） */
+const HEADER_BLOCK_H = 460;
 
 type FrameSpec = {
   x: number;
@@ -16,12 +23,19 @@ type FrameSpec = {
   rot: number;
 };
 
-function computeFrames(n: number, Wc: number, Hc: number, startY: number): FrameSpec[] {
+function computeFrames(
+  n: number,
+  contentW: number,
+  canvasH: number,
+  startY: number,
+  bottomSafe: number,
+  offsetX: number,
+): FrameSpec[] {
   const margin = 32;
   const gap = 14;
   const bottomPad = 24;
-  const availH = Hc - startY - bottomPad;
-  const maxW = Wc - margin * 2;
+  const availH = canvasH - bottomSafe - startY - bottomPad;
+  const maxW = contentW - margin * 2;
   if (n <= 0) return [];
   let cols = 1;
   if (n === 1) cols = 1;
@@ -35,7 +49,7 @@ function computeFrames(n: number, Wc: number, Hc: number, startY: number): Frame
   for (let i = 0; i < n; i++) {
     const row = Math.floor(i / cols);
     const col = i % cols;
-    const cx = margin + col * (cellW + gap) + cellW / 2;
+    const cx = offsetX + margin + col * (cellW + gap) + cellW / 2;
     const cy = startY + row * (cellH + gap) + cellH / 2;
     let fh = Math.min(cellH * 0.72, (cellW * 0.95) / 0.92);
     let fw = fh * 0.92;
@@ -123,18 +137,14 @@ function drawTextLine(
   ctx.fillText(text, cx, cy);
 }
 
-function drawHeaderAndSlogan(ctx: CanvasRenderingContext2D) {
+function drawHeaderAndSlogan(
+  ctx: CanvasRenderingContext2D,
+  safeTop: number,
+  safeSide: number,
+) {
   const cx = W / 2;
-  const bandH = 410;
-  const bandGrad = ctx.createLinearGradient(0, 0, 0, bandH);
-  bandGrad.addColorStop(0, "rgba(15,23,42,0.98)");
-  bandGrad.addColorStop(0.45, "rgba(30,58,95,0.9)");
-  bandGrad.addColorStop(1, "rgba(15,23,42,0)");
-  ctx.fillStyle = bandGrad;
-  ctx.fillRect(0, 0, W, bandH);
-
-  /** 以行中心 Y 排版（textBaseline: middle），避免混用字體時基線不齊 */
-  let y = 74;
+  /** 以行中心 Y 排版（textBaseline: middle），避免混用字體時基線不齊；整段在安全區內 */
+  let y = safeTop + 54;
   drawTextLine(
     ctx,
     "今天的我！特別努力",
@@ -194,11 +204,11 @@ function drawHeaderAndSlogan(ctx: CanvasRenderingContext2D) {
 
   ctx.shadowBlur = 0;
   const lineY = y + 36;
-  ctx.strokeStyle = "rgba(255,255,255,0.2)";
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(64, lineY);
-  ctx.lineTo(W - 64, lineY);
+  ctx.moveTo(safeSide + 8, lineY);
+  ctx.lineTo(W - safeSide - 8, lineY);
   ctx.stroke();
 
   ctx.textBaseline = "alphabetic";
@@ -230,33 +240,33 @@ export function CollageCanvas({ items, onRendered }: Props) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, "#0f172a");
-      g.addColorStop(0.35, "#1e3a5f");
-      g.addColorStop(0.65, "#0c4a6e");
-      g.addColorStop(1, "#312e81");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.save();
-      ctx.globalAlpha = 0.12;
-      for (let i = 0; i < 40; i++) {
-        ctx.beginPath();
-        ctx.arc(
-          (Math.sin(i * 1.7) * 0.5 + 0.5) * W,
-          (Math.cos(i * 1.3) * 0.5 + 0.5) * H,
-          40 + (i % 5) * 18,
-          0,
-          Math.PI * 2,
-        );
-        ctx.fillStyle = i % 2 === 0 ? "#38bdf8" : "#fb923c";
-        ctx.fill();
+      let bg: HTMLImageElement | null = null;
+      try {
+        bg = await loadImage(BG_SRC);
+      } catch {
+        /* 背景圖失敗時用漸層備援 */
       }
-      ctx.restore();
+      if (bg) {
+        drawCover(ctx, bg, 0, 0, W, H);
+      } else {
+        const g = ctx.createLinearGradient(0, 0, W, H);
+        g.addColorStop(0, "#0f172a");
+        g.addColorStop(1, "#312e81");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
 
-      drawHeaderAndSlogan(ctx);
+      const photoStartY = SAFE_TOP + HEADER_BLOCK_H;
+      drawHeaderAndSlogan(ctx, SAFE_TOP, SAFE_SIDE);
 
-      const frames = computeFrames(items.length, W, H, PHOTO_START_Y);
+      const frames = computeFrames(
+        items.length,
+        W - 2 * SAFE_SIDE,
+        H,
+        photoStartY,
+        SAFE_BOTTOM,
+        SAFE_SIDE,
+      );
       const imgs = await Promise.all(items.map((i) => loadImage(i.dataUrl)));
 
       for (let i = 0; i < imgs.length; i++) {
