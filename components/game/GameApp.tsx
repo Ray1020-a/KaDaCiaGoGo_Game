@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Spot } from "@/lib/spots";
 import { fileToCompressedDataUrl } from "@/lib/compress-image";
 import {
+  COLLAGE_MIN_GENERAL_SPOTS,
   canEarlyCollage,
   isSpotCompleted,
   mainTrackCompletedCount,
@@ -254,7 +255,9 @@ export function GameApp() {
               type="button"
               onClick={() => {
                 if (!canCollage) {
-                  showToast("請先完成至少 3 個一般景點拍照（終極／特級不計入）");
+                  showToast(
+                    `請先完成至少 ${COLLAGE_MIN_GENERAL_SPOTS} 個一般景點拍照（終極／特級不計入）`,
+                  );
                   return;
                 }
                 setTab("collage");
@@ -270,9 +273,20 @@ export function GameApp() {
               圖片拼貼
             </button>
           </div>
-          <p className="text-xs text-slate-400">
-            一般景點 {mainDone} / {mainTotal}（解鎖 圖片拼貼 需完成 3 個一般景點）
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-slate-400">
+              一般景點 {mainDone} / {mainTotal}（解鎖 圖片拼貼 需完成{" "}
+              {COLLAGE_MIN_GENERAL_SPOTS} 個一般景點）
+            </p>
+            <a
+              href="https://www.google.com/maps/d/u/1/edit?mid=1b07MI4Wb9N6Ea85DYOpfPGBv4eRl3rw&usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-sky-400/95 underline decoration-sky-500/40 underline-offset-2 hover:text-sky-300"
+            >
+              作弊小工具 · 地圖
+            </a>
+          </div>
         </div>
       </header>
 

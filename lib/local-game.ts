@@ -89,7 +89,10 @@ export function mainTrackSpotCount(spots: Spot[]) {
   return spots.filter(countsTowardMinimumThree).length;
 }
 
-/** 至少完成 3 個一般景點拍照，才可製作 IG 拼貼（終極／特級不計入） */
+/** 解鎖圖片拼貼：至少完成之一般景點數（終極／特級不計入） */
+export const COLLAGE_MIN_GENERAL_SPOTS = 6;
+
+/** 至少完成 {@link COLLAGE_MIN_GENERAL_SPOTS} 個一般景點拍照，才可製作 IG 拼貼（終極／特級不計入） */
 export function canEarlyCollage(state: LocalGameState, spots: Spot[]) {
-  return mainTrackCompletedCount(state, spots) >= 3;
+  return mainTrackCompletedCount(state, spots) >= COLLAGE_MIN_GENERAL_SPOTS;
 }
