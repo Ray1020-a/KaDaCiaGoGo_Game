@@ -46,6 +46,22 @@ export async function getPhoto(spotId: string): Promise<string | null> {
   }
 }
 
+/** localStorage 寫入失敗時用於回滾，避免 IDB 有照片但畫面未勾選已完成 */
+export async function deletePhoto(spotId: string): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error("abort"));
+      tx.objectStore(STORE).delete(spotId);
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * 將 localStorage 內嵌之照片遷入 IDB，並自 IDB 補齊僅有 photoInIdb 之景點。
  */

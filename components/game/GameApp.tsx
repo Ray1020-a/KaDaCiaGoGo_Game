@@ -18,7 +18,7 @@ import {
 import { countReflectionCharsExcludingPunctuation } from "@/lib/reflection-count";
 import { normalizeRealName, REAL_NAME_ERROR } from "@/lib/name-rules";
 import { formatTaipeiDisplay, nowTaipeiSqlite } from "@/lib/taipei-time";
-import { hydratePhotosIntoState, putPhoto } from "@/lib/photo-idb";
+import { deletePhoto, hydratePhotosIntoState, putPhoto } from "@/lib/photo-idb";
 import { CollageCanvas, type CollageItem } from "./CollageCanvas";
 import { IntroAnimation } from "./IntroAnimation";
 
@@ -38,6 +38,9 @@ export function GameApp() {
   const [showIntro, setShowIntro] = useState(true);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [local, setLocal] = useState<LocalGameState>(() => emptyState());
+  /** 供 mergeLocal 同步讀寫，以取得可靠的儲存成功與否（避免 setState 回呼時序問題） */
+  const localRef = useRef<LocalGameState>(emptyState());
+  localRef.current = local;
   const [hydrated, setHydrated] = useState(false);
   const [active, setActive] = useState<Spot | null>(null);
   const [tab, setTab] = useState<Tab>("spots");
@@ -105,21 +108,22 @@ export function GameApp() {
     window.setTimeout(() => setToast(null), 2400);
   }, []);
 
+  /** @returns 是否成功寫入 localStorage（失敗時狀態不會更新） */
   const mergeLocal = useCallback(
-    (updater: (p: LocalGameState) => LocalGameState) => {
-      setLocal((prev) => {
-        const base = prev ?? loadState();
-        const next = updater(base);
-        if (!saveState(next)) {
-          queueMicrotask(() =>
-            showToast(
-              "無法儲存：瀏覽器空間不足（多張照片會佔滿配額）。請刪除部分景點照片、改用較小圖，或清除本站資料後重試。",
-            ),
-          );
-          return prev;
-        }
-        return next;
-      });
+    (updater: (p: LocalGameState) => LocalGameState): boolean => {
+      const base = localRef.current ?? loadState();
+      const next = updater(base);
+      if (!saveState(next)) {
+        queueMicrotask(() =>
+          showToast(
+            "無法儲存：瀏覽器空間不足（多張照片會佔滿配額）。請刪除部分景點照片、改用較小圖，或清除本站資料後重試。",
+          ),
+        );
+        return false;
+      }
+      localRef.current = next;
+      setLocal(next);
+      return true;
     },
     [showToast],
   );
@@ -157,8 +161,9 @@ export function GameApp() {
           showToast(e.error ?? "登記失敗");
           return;
         }
-        mergeLocal((p) => ({ ...p, realName: name }));
-        showToast("已登記姓名");
+        if (mergeLocal((p) => ({ ...p, realName: name }))) {
+          showToast("已登記姓名");
+        }
       } else {
         const r = await fetch("/api/register", {
           method: "POST",
@@ -171,12 +176,15 @@ export function GameApp() {
           return;
         }
         const j = (await r.json()) as { userCode: string; realName: string };
-        mergeLocal((p) => ({
-          ...p,
-          userCode: j.userCode,
-          realName: j.realName,
-        }));
-        showToast("註冊完成，開始任務吧");
+        if (
+          mergeLocal((p) => ({
+            ...p,
+            userCode: j.userCode,
+            realName: j.realName,
+          }))
+        ) {
+          showToast("註冊完成，開始任務吧");
+        }
       }
     } finally {
       setRegSubmitting(false);
@@ -446,7 +454,7 @@ export function GameApp() {
           userCode={local.userCode}
           showToast={showToast}
           onClose={() => setActive(null)}
-          onUpdate={(patch) => {
+          onUpdate={(patch) =>
             mergeLocal((st) => ({
               ...st,
               spots: {
@@ -460,8 +468,8 @@ export function GameApp() {
                     patch.reflectionText ?? st.spots[active.id]?.reflectionText,
                 },
               },
-            }));
-          }}
+            }))
+          }
           onSynced={() => showToast("已同步積分與打卡時間")}
         />
       )}
@@ -532,7 +540,7 @@ type SheetProps = {
     photoInIdb?: boolean;
     completedAt?: string;
     reflectionText?: string;
-  }) => void;
+  }) => boolean;
   onSynced: () => void;
 };
 
@@ -599,7 +607,7 @@ function SpotSheet({
   const goTask = () => {
     setSessionRead(true);
     setPhase("task");
-    onUpdate({ introRead: true });
+    void onUpdate({ introRead: true });
   };
 
   const onStoryPanelPointer = () => {
@@ -619,12 +627,16 @@ function SpotSheet({
         );
         return;
       }
-      onUpdate({
+      const saved = onUpdate({
         photoDataUrl: dataUrl,
         photoInIdb: true,
         completedAt,
         introRead: true,
       });
+      if (!saved) {
+        await deletePhoto(spot.id);
+        return;
+      }
       if (userCode) {
         const r = await fetch("/api/checkin", {
           method: "POST",
@@ -646,11 +658,12 @@ function SpotSheet({
   const submitReflection = async () => {
     if (!isReflect || draftCount < minReflection) return;
     const completedAt = nowTaipeiSqlite();
-    onUpdate({
+    const saved = onUpdate({
       reflectionText: draft,
       completedAt,
       introRead: true,
     });
+    if (!saved) return;
     if (userCode) {
       const r = await fetch("/api/checkin", {
         method: "POST",
