@@ -11,10 +11,9 @@ import {
   mainTrackCompletedCount,
   mainTrackSpotCount,
   emptyState,
-  loadState,
-  saveState,
   type LocalGameState,
 } from "@/lib/local-game";
+import { loadPersistedState, persistGameState } from "@/lib/persisted-state";
 import { countReflectionCharsExcludingPunctuation } from "@/lib/reflection-count";
 import { normalizeRealName, REAL_NAME_ERROR } from "@/lib/name-rules";
 import { formatTaipeiDisplay, nowTaipeiSqlite } from "@/lib/taipei-time";
@@ -76,10 +75,11 @@ export function GameApp() {
   useEffect(() => {
     queueMicrotask(() => {
       void (async () => {
-        const raw = loadState();
+        const raw = await loadPersistedState();
         const merged = await hydratePhotosIntoState(raw);
+        localRef.current = merged;
         setLocal(merged);
-        saveState(merged);
+        await persistGameState(merged);
         setHydrated(true);
       })();
     });
@@ -108,15 +108,15 @@ export function GameApp() {
     window.setTimeout(() => setToast(null), 2400);
   }, []);
 
-  /** @returns 是否成功寫入 localStorage（失敗時狀態不會更新） */
+  /** @returns 是否成功寫入 IndexedDB（失敗時狀態不會更新） */
   const mergeLocal = useCallback(
-    (updater: (p: LocalGameState) => LocalGameState): boolean => {
-      const base = localRef.current ?? loadState();
+    async (updater: (p: LocalGameState) => LocalGameState): Promise<boolean> => {
+      const base = localRef.current ?? emptyState();
       const next = updater(base);
-      if (!saveState(next)) {
+      if (!(await persistGameState(next))) {
         queueMicrotask(() =>
           showToast(
-            "無法儲存：瀏覽器空間不足（多張照片會佔滿配額）。請刪除部分景點照片、改用較小圖，或清除本站資料後重試。",
+            "無法儲存到裝置（空間不足或瀏覽限制）。可嘗試關閉私密瀏覽、釋放手機空間，或清除本站資料後重試。",
           ),
         );
         return false;
@@ -149,7 +149,7 @@ export function GameApp() {
     }
     setRegSubmitting(true);
     try {
-      const st = loadState();
+      const st = localRef.current;
       if (st.userCode) {
         const r = await fetch("/api/profile", {
           method: "POST",
@@ -161,7 +161,7 @@ export function GameApp() {
           showToast(e.error ?? "登記失敗");
           return;
         }
-        if (mergeLocal((p) => ({ ...p, realName: name }))) {
+        if (await mergeLocal((p) => ({ ...p, realName: name }))) {
           showToast("已登記姓名");
         }
       } else {
@@ -177,7 +177,7 @@ export function GameApp() {
         }
         const j = (await r.json()) as { userCode: string; realName: string };
         if (
-          mergeLocal((p) => ({
+          await mergeLocal((p) => ({
             ...p,
             userCode: j.userCode,
             realName: j.realName,
@@ -454,7 +454,7 @@ export function GameApp() {
           userCode={local.userCode}
           showToast={showToast}
           onClose={() => setActive(null)}
-          onUpdate={(patch) =>
+          onUpdate={async (patch) =>
             mergeLocal((st) => ({
               ...st,
               spots: {
@@ -540,7 +540,7 @@ type SheetProps = {
     photoInIdb?: boolean;
     completedAt?: string;
     reflectionText?: string;
-  }) => boolean;
+  }) => boolean | Promise<boolean>;
   onSynced: () => void;
 };
 
@@ -607,7 +607,7 @@ function SpotSheet({
   const goTask = () => {
     setSessionRead(true);
     setPhase("task");
-    void onUpdate({ introRead: true });
+    void Promise.resolve(onUpdate({ introRead: true }));
   };
 
   const onStoryPanelPointer = () => {
@@ -627,12 +627,14 @@ function SpotSheet({
         );
         return;
       }
-      const saved = onUpdate({
-        photoDataUrl: dataUrl,
-        photoInIdb: true,
-        completedAt,
-        introRead: true,
-      });
+      const saved = await Promise.resolve(
+        onUpdate({
+          photoDataUrl: dataUrl,
+          photoInIdb: true,
+          completedAt,
+          introRead: true,
+        }),
+      );
       if (!saved) {
         await deletePhoto(spot.id);
         return;
@@ -658,11 +660,13 @@ function SpotSheet({
   const submitReflection = async () => {
     if (!isReflect || draftCount < minReflection) return;
     const completedAt = nowTaipeiSqlite();
-    const saved = onUpdate({
-      reflectionText: draft,
-      completedAt,
-      introRead: true,
-    });
+    const saved = await Promise.resolve(
+      onUpdate({
+        reflectionText: draft,
+        completedAt,
+        introRead: true,
+      }),
+    );
     if (!saved) return;
     if (userCode) {
       const r = await fetch("/api/checkin", {

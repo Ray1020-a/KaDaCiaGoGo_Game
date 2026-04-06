@@ -22,13 +22,9 @@ export type LocalGameState = {
   spots: Record<string, SpotProgress>;
 };
 
-export function loadState(): LocalGameState {
-  if (typeof window === "undefined") {
-    return emptyState();
-  }
+/** 解析存檔 JSON（localStorage 或 IndexedDB meta 共用） */
+export function parseStoredGameJson(raw: string): LocalGameState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyState();
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (parsed.version === 1) {
       const p = parsed as {
@@ -51,6 +47,19 @@ export function loadState(): LocalGameState {
       realName: p.realName ?? null,
       spots: p.spots ?? {},
     };
+  } catch {
+    return emptyState();
+  }
+}
+
+export function loadState(): LocalGameState {
+  if (typeof window === "undefined") {
+    return emptyState();
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return emptyState();
+    return parseStoredGameJson(raw);
   } catch {
     return emptyState();
   }
