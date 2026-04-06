@@ -1,6 +1,6 @@
 export async function fileToCompressedDataUrl(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file);
-  /** 多張照片存 localStorage，須控制單張體積以免 Safari 配額爆掉 */
+  /** 多張照片會存 IndexedDB，仍控制單張體積以節省空間 */
   const maxW = 1024;
   const scale = Math.min(1, maxW / bitmap.width);
   const w = Math.round(bitmap.width * scale);

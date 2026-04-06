@@ -18,6 +18,7 @@ import {
 import { countReflectionCharsExcludingPunctuation } from "@/lib/reflection-count";
 import { normalizeRealName, REAL_NAME_ERROR } from "@/lib/name-rules";
 import { formatTaipeiDisplay, nowTaipeiSqlite } from "@/lib/taipei-time";
+import { hydratePhotosIntoState, putPhoto } from "@/lib/photo-idb";
 import { CollageCanvas, type CollageItem } from "./CollageCanvas";
 import { IntroAnimation } from "./IntroAnimation";
 
@@ -71,8 +72,13 @@ export function GameApp() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setLocal(loadState());
-      setHydrated(true);
+      void (async () => {
+        const raw = loadState();
+        const merged = await hydratePhotosIntoState(raw);
+        setLocal(merged);
+        saveState(merged);
+        setHydrated(true);
+      })();
     });
   }, []);
 
@@ -438,6 +444,7 @@ export function GameApp() {
           spot={active}
           progress={local.spots[active.id]}
           userCode={local.userCode}
+          showToast={showToast}
           onClose={() => setActive(null)}
           onUpdate={(patch) => {
             mergeLocal((st) => ({
@@ -447,6 +454,7 @@ export function GameApp() {
                 [active.id]: {
                   introRead: patch.introRead ?? st.spots[active.id]?.introRead ?? false,
                   photoDataUrl: patch.photoDataUrl ?? st.spots[active.id]?.photoDataUrl,
+                  photoInIdb: patch.photoInIdb ?? st.spots[active.id]?.photoInIdb,
                   completedAt: patch.completedAt ?? st.spots[active.id]?.completedAt,
                   reflectionText:
                     patch.reflectionText ?? st.spots[active.id]?.reflectionText,
@@ -511,14 +519,17 @@ type SheetProps = {
   progress?: {
     introRead?: boolean;
     photoDataUrl?: string;
+    photoInIdb?: boolean;
     completedAt?: string;
     reflectionText?: string;
   };
   userCode: string | null;
+  showToast: (msg: string) => void;
   onClose: () => void;
   onUpdate: (p: {
     introRead?: boolean;
     photoDataUrl?: string;
+    photoInIdb?: boolean;
     completedAt?: string;
     reflectionText?: string;
   }) => void;
@@ -540,7 +551,7 @@ function getInitialStoryPhase(
     if (done) return "task";
     return progress?.introRead ? "task" : "typing";
   }
-  if (progress?.photoDataUrl) return "task";
+  if (progress?.photoDataUrl || progress?.photoInIdb) return "task";
   return progress?.introRead ? "task" : "typing";
 }
 
@@ -548,6 +559,7 @@ function SpotSheet({
   spot,
   progress,
   userCode,
+  showToast,
   onClose,
   onUpdate,
   onSynced,
@@ -600,7 +612,19 @@ function SpotSheet({
     try {
       const dataUrl = await fileToCompressedDataUrl(f);
       const completedAt = nowTaipeiSqlite();
-      onUpdate({ photoDataUrl: dataUrl, completedAt, introRead: true });
+      const idbOk = await putPhoto(spot.id, dataUrl);
+      if (!idbOk) {
+        showToast(
+          "無法寫入瀏覽器相片快取（IndexedDB）。請檢查儲存空間或關閉私密瀏覽後重試。",
+        );
+        return;
+      }
+      onUpdate({
+        photoDataUrl: dataUrl,
+        photoInIdb: true,
+        completedAt,
+        introRead: true,
+      });
       if (userCode) {
         const r = await fetch("/api/checkin", {
           method: "POST",
@@ -736,7 +760,7 @@ function SpotSheet({
         <div className="flex flex-1 flex-col px-5 pb-10 pt-4">
           <p className="text-xs text-slate-500">任務：在此景點拍照打卡</p>
           <div className="mt-4 flex flex-1 flex-col gap-3">
-            {!progress?.photoDataUrl ? (
+            {!progress?.photoDataUrl && !progress?.photoInIdb ? (
               <>
                 <input
                   ref={fileRef}
@@ -759,12 +783,16 @@ function SpotSheet({
                 <p className="text-center text-xs text-emerald-300">
                   此景點已完成 · 積分 {spot.points}
                 </p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={progress.photoDataUrl}
-                  alt="任務照片"
-                  className="max-h-[42dvh] w-full rounded-2xl object-contain"
-                />
+                {progress?.photoDataUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={progress.photoDataUrl}
+                    alt="任務照片"
+                    className="max-h-[42dvh] w-full rounded-2xl object-contain"
+                  />
+                ) : (
+                  <p className="py-8 text-center text-sm text-slate-400">照片載入中…</p>
+                )}
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}

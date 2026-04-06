@@ -5,8 +5,10 @@ export const STORAGE_KEY = "kadaciagogo_day3_2026";
 
 export type SpotProgress = {
   introRead: boolean;
-  /** 壓縮後的 JPEG data URL，供拼貼與離線顯示 */
+  /** 壓縮後的 JPEG data URL，供拼貼與離線顯示（執行期；持久化時改存 IndexedDB） */
   photoDataUrl?: string;
+  /** 照片已寫入 IndexedDB（localStorage 不再存 base64） */
+  photoInIdb?: boolean;
   completedAt?: string;
   /** 特級任務心得全文 */
   reflectionText?: string;
@@ -58,10 +60,29 @@ export function emptyState(): LocalGameState {
   return { version: 2, userCode: null, realName: null, spots: {} };
 }
 
+/**
+ * 寫入 localStorage（不含 base64）。若僅有 photoDataUrl 未寫入 IDB，仍保留內嵌以兼容舊資料。
+ */
+export function thinStateForStorage(state: LocalGameState): LocalGameState {
+  return {
+    ...state,
+    spots: Object.fromEntries(
+      Object.entries(state.spots).map(([id, p]) => {
+        if (!p) return [id, p];
+        if (p.photoInIdb && p.photoDataUrl) {
+          const { photoDataUrl: _d, ...rest } = p;
+          return [id, { ...rest, photoInIdb: true }];
+        }
+        return [id, p];
+      }),
+    ),
+  };
+}
+
 /** @returns 是否成功寫入（配額不足等會回傳 false，不拋錯） */
 export function saveState(state: LocalGameState): boolean {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(thinStateForStorage(state)));
     return true;
   } catch {
     return false;
@@ -77,7 +98,7 @@ export function isSpotCompleted(state: LocalGameState, spot: Spot): boolean {
       spot.reflectionMinChars
     );
   }
-  return Boolean(p.photoDataUrl);
+  return Boolean(p.photoDataUrl || p.photoInIdb);
 }
 
 export function completedCount(state: LocalGameState, spots: Spot[]) {
