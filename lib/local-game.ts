@@ -58,8 +58,14 @@ export function emptyState(): LocalGameState {
   return { version: 2, userCode: null, realName: null, spots: {} };
 }
 
-export function saveState(state: LocalGameState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+/** @returns 是否成功寫入（配額不足等會回傳 false，不拋錯） */
+export function saveState(state: LocalGameState): boolean {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function isSpotCompleted(state: LocalGameState, spot: Spot): boolean {

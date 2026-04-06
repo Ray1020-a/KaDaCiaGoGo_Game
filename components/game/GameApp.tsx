@@ -94,19 +94,29 @@ export function GameApp() {
     };
   }, [tab, hydrated]);
 
-  const mergeLocal = useCallback((updater: (p: LocalGameState) => LocalGameState) => {
-    setLocal((prev) => {
-      const base = prev ?? loadState();
-      const next = updater(base);
-      saveState(next);
-      return next;
-    });
-  }, []);
-
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 2400);
-  };
+  }, []);
+
+  const mergeLocal = useCallback(
+    (updater: (p: LocalGameState) => LocalGameState) => {
+      setLocal((prev) => {
+        const base = prev ?? loadState();
+        const next = updater(base);
+        if (!saveState(next)) {
+          queueMicrotask(() =>
+            showToast(
+              "無法儲存：瀏覽器空間不足（多張照片會佔滿配額）。請刪除部分景點照片、改用較小圖，或清除本站資料後重試。",
+            ),
+          );
+          return prev;
+        }
+        return next;
+      });
+    },
+    [showToast],
+  );
 
   const onIntroDone = () => {
     try {
